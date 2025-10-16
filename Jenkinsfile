@@ -2,9 +2,7 @@ pipeline {
     agent any
 
     environment {
-        BACKEND_IMAGE = "nidle-backend:latest"
-        FRONTEND_IMAGE = "nidle-frontend:latest"
-        COMPOSE_PROJECT_DIR = "${WORKSPACE}" // docker-compose.yml location
+        DOCKER_GROUP_ID = '976'  // Adjust to match host docker group
     }
 
     stages {
@@ -12,28 +10,31 @@ pipeline {
         stage('Checkout Code') {
             steps {
                 echo "📦 Checking out code..."
-                checkout scm
+                git branch: 'main', url: 'https://github.com/riazhasan101/nidle-iot-demo'
             }
         }
 
         stage('Build Backend Docker') {
             steps {
                 echo "🚀 Building Backend Docker Image..."
-                sh "docker build -t ${BACKEND_IMAGE} ./backend"
+                sh "docker build -t nidle-backend:latest ./backend"
             }
         }
 
         stage('Build Frontend Docker') {
             steps {
                 echo "🚀 Building Frontend Docker Image..."
-                sh "docker build -t ${FRONTEND_IMAGE} ./frontend"
+                sh "docker build -t nidle-frontend:latest ./frontend"
             }
         }
 
         stage('Deploy with Docker Compose') {
             steps {
-                echo "📦 Deploying services via Docker Compose..."
-                sh "docker-compose -f ${COMPOSE_PROJECT_DIR}/docker-compose.yml up -d --build"
+                echo "📦 Deploying with Docker Compose..."
+                sh """
+                docker-compose -f docker-compose.yml down
+                docker-compose -f docker-compose.yml up -d --build
+                """
             }
         }
     }
@@ -43,7 +44,7 @@ pipeline {
             echo "✅ Pipeline completed successfully!"
         }
         failure {
-            echo "❌ Pipeline failed. Check logs!"
+            echo "❌ Pipeline failed! Check logs."
         }
     }
 }
