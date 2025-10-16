@@ -1,64 +1,32 @@
 pipeline {
-    agent none
+    agent any
+
+    environment {
+        PROJECT_DIR = "iot-devops-test"
+        DOCKER_COMPOSE_FILE = "docker-compose.yml"
+    }
 
     stages {
+
         stage('Checkout Code') {
-            agent any
             steps {
                 echo "📦 Checking out latest code..."
                 checkout scm
             }
         }
 
-        stage('Build Backend (Java + Maven)') {
-            agent {
-                docker {
-                    image 'maven:3.9.5-eclipse-temurin-17'
-                    args '-v $HOME/.m2:/root/.m2'
-                }
-            }
+        stage('Build & Deploy with Docker') {
             steps {
-                dir('backend') {
-                    echo "🧱 Building Java backend..."
-                    sh 'mvn clean package -DskipTests'
+                dir("${PROJECT_DIR}") {
+                    echo "🐳 Building and deploying all services with Docker Compose..."
+                    // Stop previous containers if running
+                    sh 'docker-compose down || true'
+                    // Build images and start containers in detached mode
+                    sh 'docker-compose up --build -d'
                 }
             }
         }
 
-        stage('Build Frontend (Angular)') {
-            agent {
-                docker {
-                    image 'node:20'
-                    args '-v $HOME/.npm:/root/.npm'
-                }
-            }
-            steps {
-                dir('frontend') {
-                    echo "🌐 Building Angular frontend..."
-                    sh '''
-                    if [ -f package.json ]; then
-                        npm install
-                        npm run build --prod || npm run build
-                    else
-                        echo "⚠️ No frontend package.json found, skipping build..."
-                    fi
-                    '''
-                }
-            }
-        }
-
-        stage('Build & Deploy Docker') {
-            agent any
-            steps {
-                echo "🐳 Building Docker images and deploying..."
-                sh '''
-                docker-compose build --no-cache
-                docker-compose down || true
-                docker-compose up -d
-                docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
-                '''
-            }
-        }
     }
 
     post {
