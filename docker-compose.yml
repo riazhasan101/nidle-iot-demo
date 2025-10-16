@@ -4,9 +4,9 @@ services:
   rabbitmq:
     image: rabbitmq:3-management
     ports:
-      - "15672:15672"   # Management console
-      - "1883:1883"     # MQTT port
-      - "5672:5672"     # AMQP port
+      - "15672:15672"  # management UI
+      - "1883:1883"    # MQTT
+      - "5672:5672"    # AMQP
     environment:
       RABBITMQ_DEFAULT_USER: admin
       RABBITMQ_DEFAULT_PASS: admin
@@ -14,49 +14,44 @@ services:
       bash -c "rabbitmq-plugins enable rabbitmq_mqtt &&
                rabbitmq-plugins enable rabbitmq_web_mqtt &&
                rabbitmq-server"
-    networks:
-      - iot_net
+    networks: [iot_net]
 
   mongodb:
-    image: mongo
-    ports:
-      - "27017:27017"
+    image: mongo:6
+    ports: ["27017:27017"]
     volumes:
       - mongo_data:/data/db
-    networks:
-      - iot_net
+    networks: [iot_net]
 
   mariadb:
-    image: mariadb:latest
+    image: mariadb:10.11
     environment:
       MYSQL_ROOT_PASSWORD: root
       MYSQL_DATABASE: iot_test
       MYSQL_USER: iot_user
       MYSQL_PASSWORD: iot_pass
-    ports:
-      - "3306:3306"
+    ports: ["3306:3306"]
     volumes:
       - mariadb_data:/var/lib/mysql
-    networks:
-      - iot_net
+    networks: [iot_net]
 
   mqtt-simulator:
     build: ./mqtt-simulator
     depends_on:
       - rabbitmq
-    networks:
-      - iot_net
+    networks: [iot_net]
 
   mqtt-consumer:
     build: ./mqtt-consumer
     depends_on:
       - rabbitmq
       - mongodb
-    networks:
-      - iot_net
+    networks: [iot_net]
 
   backend:
-    build: ./backend
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
     depends_on:
       - mariadb
       - mongodb
@@ -64,19 +59,17 @@ services:
       SPRING_DATASOURCE_URL: jdbc:mariadb://mariadb:3306/iot_test
       SPRING_DATASOURCE_USERNAME: iot_user
       SPRING_DATASOURCE_PASSWORD: iot_pass
-    ports:
-      - "8080:8080"
-    networks:
-      - iot_net
+    ports: ["8080:8080"]
+    networks: [iot_net]
 
   frontend:
-    build: ./frontend
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
     depends_on:
       - backend
-    ports:
-      - "4200:80"
-    networks:
-      - iot_net
+    ports: ["4200:80"]
+    networks: [iot_net]
 
 volumes:
   mongo_data:
