@@ -1,69 +1,72 @@
 pipeline {
-    agent any
-
-    environment {
-        REGISTRY = "localhost:5000"   // change to your DockerHub if needed
-        PROJECT_NAME = "iot-devops-test"
-    }
+    agent none
 
     stages {
-        stage('Checkout') {
+        stage('Checkout Code') {
+            agent any
             steps {
-                echo "📦 Checking out source code"
+                echo "📦 Checking out latest code..."
                 checkout scm
             }
         }
 
-        stage('Build Backend') {
+        stage('Build Backend (Java + Maven)') {
+            agent {
+                docker {
+                    image 'maven:3.9.5-eclipse-temurin-17'
+                    args '-v $HOME/.m2:/root/.m2'
+                }
+            }
             steps {
                 dir('backend') {
-                    sh 'mvn -q clean package -DskipTests'
+                    echo "🧱 Building Java backend..."
+                    sh 'mvn clean package -DskipTests'
                 }
             }
         }
 
-        stage('Build Docker Images') {
+        stage('Build Frontend (Angular)') {
+            agent {
+                docker {
+                    image 'node:20'
+                    args '-v $HOME/.npm:/root/.npm'
+                }
+            }
             steps {
-                script {
-                    def services = ['backend', 'frontend', 'mqtt-simulator', 'mqtt-consumer']
-                    for (srv in services) {
-                        sh """
-                        docker build -t ${REGISTRY}/${PROJECT_NAME}-${srv}:latest ${srv}
-                        """
-                    }
+                dir('frontend') {
+                    echo "🌐 Building Angular frontend..."
+                    sh '''
+                    if [ -f package.json ]; then
+                        npm install
+                        npm run build --prod || npm run build
+                    else
+                        echo "⚠️ No frontend package.json found, skipping build..."
+                    fi
+                    '''
                 }
             }
         }
 
-        stage('Push Images') {
+        stage('Build & Deploy Docker') {
+            agent any
             steps {
-                script {
-                    def services = ['backend', 'frontend', 'mqtt-simulator', 'mqtt-consumer']
-                    for (srv in services) {
-                        sh """
-                        docker push ${REGISTRY}/${PROJECT_NAME}-${srv}:latest || true
-                        """
-                    }
-                }
-            }
-        }
-
-        stage('Deploy') {
-            steps {
-                sh """
+                echo "🐳 Building Docker images and deploying..."
+                sh '''
+                docker-compose build --no-cache
                 docker-compose down || true
                 docker-compose up -d
-                """
+                docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
+                '''
             }
         }
     }
 
     post {
         success {
-            echo "✅ CI/CD pipeline completed successfully"
+            echo "✅ CI/CD pipeline completed successfully!"
         }
         failure {
-            echo "❌ Build or deployment failed"
+            echo "❌ Pipeline failed! Check logs for details."
         }
     }
 }
