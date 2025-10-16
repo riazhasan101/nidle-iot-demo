@@ -1,0 +1,5 @@
+<h2>IoT Device Dashboard</h2>
+<table border="1">
+<tr><th>ID</th><th>Device</th><th>Temp</th><th>Hum</th></tr>
+<tr *ngFor="let d of devices"><td>{{d.id}}</td><td>{{d.deviceId}}</td><td>{{d.temperature}}</td><td>{{d.humidity}}</td></tr>
+</table>
