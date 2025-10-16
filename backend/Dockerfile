@@ -1,13 +1,8 @@
-# Stage 1: Build with Maven
-FROM maven:3.9.5-eclipse-temurin-17 AS build
+# backend/Dockerfile
+FROM eclipse-temurin:17-jdk-alpine
 WORKDIR /app
-COPY pom.xml .
+COPY pom.xml ./
 COPY src ./src
-RUN mvn clean package -DskipTests
-
-# Stage 2: Run with JRE
-FROM eclipse-temurin:17-jre
-WORKDIR /app
-COPY --from=build /app/target/*.jar app.jar
+RUN ./mvnw clean package -DskipTests   # if Maven wrapper is included
 EXPOSE 8080
-CMD ["java", "-jar", "app.jar"]
+CMD ["java", "-jar", "target/backend.jar"]

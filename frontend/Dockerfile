@@ -1,13 +1,12 @@
-# Stage 1: Build with Node
-FROM node:20 AS build
+# frontend/Dockerfile
+FROM node:20-alpine AS build
 WORKDIR /app
 COPY package*.json ./
 RUN npm install
-COPY . .
+COPY ./src ./src
 RUN npm run build
 
-# Stage 2: Serve with Nginx
 FROM nginx:alpine
-COPY --from=build /app/dist/* /usr/share/nginx/html
+COPY --from=build /app/dist/your-app-name /usr/share/nginx/html
 EXPOSE 80
 CMD ["nginx", "-g", "daemon off;"]

@@ -1,22 +1,15 @@
-version: '3.8'
-
+version: "3.8"
 services:
   backend:
     image: nidle-backend:latest
     container_name: nidle-backend
     ports:
-      - "8080:8080"
+      - "8081:8080"
+    restart: always
 
   frontend:
     image: nidle-frontend:latest
     container_name: nidle-frontend
     ports:
       - "80:80"
-
-  mqtt-simulator:
-    image: python:3.11
-    container_name: mqtt-simulator
-    volumes:
-      - ./mqtt-simulator:/app
-    working_dir: /app
-    command: python simulate.py
+    restart: always
