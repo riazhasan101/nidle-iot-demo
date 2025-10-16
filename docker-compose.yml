@@ -1,80 +1,22 @@
-version: "3.9"
+version: '3.8'
 
 services:
-  rabbitmq:
-    image: rabbitmq:3-management
-    ports:
-      - "15672:15672"  # management UI
-      - "1883:1883"    # MQTT
-      - "5672:5672"    # AMQP
-    environment:
-      RABBITMQ_DEFAULT_USER: admin
-      RABBITMQ_DEFAULT_PASS: admin
-    command: >
-      bash -c "rabbitmq-plugins enable rabbitmq_mqtt &&
-               rabbitmq-plugins enable rabbitmq_web_mqtt &&
-               rabbitmq-server"
-    networks: [iot_net]
-
-  mongodb:
-    image: mongo:6
-    ports: ["27017:27017"]
-    volumes:
-      - mongo_data:/data/db
-    networks: [iot_net]
-
-  mariadb:
-    image: mariadb:10.11
-    environment:
-      MYSQL_ROOT_PASSWORD: root
-      MYSQL_DATABASE: iot_test
-      MYSQL_USER: iot_user
-      MYSQL_PASSWORD: iot_pass
-    ports: ["3306:3306"]
-    volumes:
-      - mariadb_data:/var/lib/mysql
-    networks: [iot_net]
-
-  mqtt-simulator:
-    build: ./mqtt-simulator
-    depends_on:
-      - rabbitmq
-    networks: [iot_net]
-
-  mqtt-consumer:
-    build: ./mqtt-consumer
-    depends_on:
-      - rabbitmq
-      - mongodb
-    networks: [iot_net]
-
   backend:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
-    depends_on:
-      - mariadb
-      - mongodb
-    environment:
-      SPRING_DATASOURCE_URL: jdbc:mariadb://mariadb:3306/iot_test
-      SPRING_DATASOURCE_USERNAME: iot_user
-      SPRING_DATASOURCE_PASSWORD: iot_pass
-    ports: ["8080:8080"]
-    networks: [iot_net]
+    image: nidle-backend:latest
+    container_name: nidle-backend
+    ports:
+      - "8080:8080"
 
   frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
-    depends_on:
-      - backend
-    ports: ["4200:80"]
-    networks: [iot_net]
+    image: nidle-frontend:latest
+    container_name: nidle-frontend
+    ports:
+      - "80:80"
 
-volumes:
-  mongo_data:
-  mariadb_data:
-
-networks:
-  iot_net:
-    driver: bridge
+  mqtt-simulator:
+    image: python:3.11
+    container_name: mqtt-simulator
+    volumes:
+      - ./mqtt-simulator:/app
+    working_dir: /app
+    command: python simulate.py

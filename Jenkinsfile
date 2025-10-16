@@ -2,13 +2,12 @@ pipeline {
     agent any
 
     environment {
-        PROJECT_DIR = "iot-devops-test"
-        BACKEND_DIR = "backend"
-        FRONTEND_DIR = "frontend"
-        DOCKER_COMPOSE_FILE = "docker-compose.yml"
+        BACKEND_IMAGE = "nidle-backend:latest"
+        FRONTEND_IMAGE = "nidle-frontend:latest"
     }
 
     stages {
+
         stage('Checkout Code') {
             steps {
                 echo "📦 Checking out latest code..."
@@ -16,55 +15,24 @@ pipeline {
             }
         }
 
-        stage('Build Backend (Java + Maven)') {
-            agent {
-                docker {
-                    image 'maven:3.9.5-eclipse-temurin-17'
-                    args '-v $HOME/.m2:/root/.m2'
-                }
-            }
+        stage('Build Backend Docker') {
             steps {
-                dir("${PROJECT_DIR}/${BACKEND_DIR}") {
-                    echo "🧱 Building backend..."
-                    sh 'mvn clean package -DskipTests'
-                }
+                echo "🚀 Building Backend Docker Image..."
+                sh "docker build -t ${BACKEND_IMAGE} ./backend"
             }
         }
 
-        stage('Build Frontend (Angular)') {
-            agent {
-                docker {
-                    image 'node:20'
-                }
-            }
+        stage('Build Frontend Docker') {
             steps {
-                dir("${PROJECT_DIR}/${FRONTEND_DIR}") {
-                    echo "🌐 Building frontend..."
-                    sh '''
-                    if [ -f package.json ]; then
-                        npm install
-                        npm run build --prod
-                    else
-                        echo "⚠️ No Angular project found! Skipping..."
-                    fi
-                    '''
-                }
+                echo "🚀 Building Frontend Docker Image..."
+                sh "docker build -t ${FRONTEND_IMAGE} ./frontend"
             }
         }
 
-        stage('Build & Deploy with Docker') {
-            agent {
-                docker {
-                    image 'docker:24.0.5-dind'
-                    args '--privileged -v /var/run/docker.sock:/var/run/docker.sock'
-                }
-            }
+        stage('Deploy with Docker Compose') {
             steps {
-                dir("${PROJECT_DIR}") {
-                    echo "🐳 Building and deploying services..."
-                    sh 'docker-compose down || true'
-                    sh 'docker-compose up --build -d'
-                }
+                echo "📦 Deploying Docker Compose..."
+                sh "docker-compose up -d --build"
             }
         }
     }
@@ -74,7 +42,7 @@ pipeline {
             echo "✅ Pipeline completed successfully!"
         }
         failure {
-            echo "❌ Pipeline failed! Check logs."
+            echo "❌ Pipeline failed. Check logs!"
         }
     }
 }
